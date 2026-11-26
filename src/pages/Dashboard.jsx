@@ -5,24 +5,28 @@ import { useApp } from '../context/AppContext';
 import { PageHeader, Card, StatCard, EmptyState } from '../components/common/ui';
 import StatusBadge from '../components/common/StatusBadge';
 import { formatCurrency, formatDateTime, formatTime } from '../utils/format';
-import { dailyChallans, categoryDistribution } from '../data/mockData';
 
 // Neutral, restrained palette (navy family + greys).
 const PIE_COLORS = ['#203f60', '#3f6a96', '#6f93b8', '#a3bad0', '#7b8794', '#c9d0d8'];
 
 export default function Dashboard() {
-  const { challans, detections, complaints, history } = useApp();
+  const { challans, detections, complaints, history, payments } = useApp();
   const navigate = useNavigate();
 
   const pendingQueue = detections.filter((d) => d.status === 'Pending');
-  const approved = detections.filter((d) => d.status === 'Approved').length + history.filter((h) => h.action === 'Approved').length;
-  const rejected = history.filter((h) => h.action === 'Rejected').length;
+  const approved = detections.filter((d) => d.status === 'Approved').length;
+  const rejected = detections.filter((h) => h.status === 'Rejected').length;
   const totalFine = challans.filter((c) => c.status !== 'Cancelled').reduce((s, c) => s + c.fineAmount, 0);
   const pendingComplaints = complaints.filter((c) => c.status === 'Pending').length;
   const complaintCounts = ['Pending', 'Under Review', 'Resolved', 'Rejected'].map((s) => ({ s, n: complaints.filter((c) => c.status === s).length }));
 
-  // Today's bar reflects live generation in this session.
-  const chartData = dailyChallans.map((d, i, arr) => (i === arr.length - 1 ? { ...d, count: d.count + challans.filter((c) => c.generatedAt.startsWith(new Date().toISOString().slice(0, 10)) && c.officer).length } : d));
+  const chartData = Array.from({ length: 7 }, (_, offset) => {
+    const day = new Date(); day.setDate(day.getDate() - (6 - offset));
+    const key = day.toISOString().slice(0, 10);
+    return { day: day.toLocaleDateString('en-IN', { day: '2-digit', month: 'short' }), count: challans.filter((c) => c.generatedAt.slice(0, 10) === key).length };
+  });
+  const categories = challans.flatMap((c) => c.violations).reduce((all, violation) => { all[violation.label] = (all[violation.label] || 0) + 1; return all; }, {});
+  const categoryData = Object.entries(categories).map(([name, value]) => ({ name, value }));
 
   return (
     <>
@@ -35,6 +39,7 @@ export default function Dashboard() {
         <StatCard label="Rejected Violations" value={rejected} tone="red" />
         <StatCard label="Pending Public Complaints" value={pendingComplaints} tone="amber" />
         <StatCard label="Total Fine Generated" value={formatCurrency(totalFine)} note="Excludes cancelled" />
+        <StatCard label="Payments Collected" value={formatCurrency(payments.filter((p) => p.status === 'Success').reduce((sum, p) => sum + p.amount, 0))} note="Successful transactions" />
       </div>
 
       <div className="grid grid-dash" style={{ marginBottom: 16 }}>
@@ -87,15 +92,15 @@ export default function Dashboard() {
             <div style={{ flex: 1, height: '100%' }}>
               <ResponsiveContainer>
                 <PieChart>
-                  <Pie data={categoryDistribution} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={1}>
-                    {categoryDistribution.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
+                  <Pie data={categoryData} dataKey="value" nameKey="name" innerRadius={50} outerRadius={90} paddingAngle={1}>
+                    {categoryData.map((_, i) => <Cell key={i} fill={PIE_COLORS[i % PIE_COLORS.length]} />)}
                   </Pie>
                   <Tooltip />
                 </PieChart>
               </ResponsiveContainer>
             </div>
             <ul style={{ listStyle: 'none', margin: 0, padding: 0, fontSize: 12.5, minWidth: 170 }}>
-              {categoryDistribution.map((c, i) => (
+              {categoryData.map((c, i) => (
                 <li key={c.name} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '3px 0' }}>
                   <span style={{ width: 10, height: 10, background: PIE_COLORS[i % PIE_COLORS.length], display: 'inline-block' }} />
                   <span style={{ flex: 1 }}>{c.name}</span><b>{c.value}</b>

@@ -38,4 +38,4 @@ export const DEFAULT_PENALTY_RULES = [
   { code: 'INVALID_REGISTRATION', label: 'Invalid Registration', group: 'document', fine: 2000 },
   { code: 'EXPIRED_FITNESS', label: 'Expired Fitness Certificate', group: 'document', fine: 1000 },
   { code: 'MISSING_DOCUMENTS', label: 'Missing Required Documents', group: 'document', fine: 500 },
-];
+].map((rule, index) => ({ ...rule, ruleReference: `Illustrative demo rule T-${String(index + 1).padStart(2, '0')}`, version: 1, active: true }));
