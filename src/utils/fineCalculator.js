@@ -4,7 +4,8 @@ export function buildChallanLines(selectedCodes, rules) {
   return selectedCodes
     .map((code) => rules.find((r) => r.code === code))
     .filter(Boolean)
-    .map((r) => ({ code: r.code, label: r.label, fine: r.fine }));
+    .filter((r) => r.active !== false)
+    .map((r) => ({ code: r.code, label: r.label, fine: r.fine, group: r.group, ruleReference: r.ruleReference || 'Illustrative demo rule' }));
 }
 
 export function totalFine(lines) {
@@ -26,7 +27,8 @@ export function suggestDocumentCodes(vehicle) {
   return codes;
 }
 
-let seq = 4502;
+// The initial connected seed uses IDs through CH-2026-004521.
+let seq = 4521;
 export function nextChallanId() {
   seq += 1;
   return `CH-2026-${String(seq).padStart(6, '0')}`;

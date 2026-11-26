@@ -1,19 +1,21 @@
 import { NavLink, Outlet, useNavigate } from 'react-router-dom';
 import {
   LayoutDashboard, ScanEye, ClipboardCheck, FileText, MessageSquareWarning,
-  Car, History, BarChart3, Settings, LogOut, Landmark,
+  Car, History, BarChart3, Settings, LogOut, Landmark, Activity,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { useToast } from '../common/Toast';
 import { Loading } from '../common/ui';
+import { currentAccount, signOut, addAudit } from '../../services/auth';
 
 export default function Layout() {
   const { officer, counts, loading } = useApp();
   const toast = useToast();
   const navigate = useNavigate();
+  const account = currentAccount();
 
   const items = [
-    { to: '/', label: 'Dashboard', icon: LayoutDashboard, end: true },
+    { to: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
     { to: '/verification', label: 'Manual Verification', icon: ScanEye, badge: counts.pendingVerifications },
     { to: '/approvals', label: 'Pending Approvals', icon: ClipboardCheck, badge: counts.pendingApprovals },
     { to: '/challans', label: 'Challan Management', icon: FileText },
@@ -22,9 +24,11 @@ export default function Layout() {
     { to: '/history', label: 'Verification History', icon: History },
     { to: '/reports', label: 'Reports & Analytics', icon: BarChart3 },
     { to: '/settings', label: 'Settings', icon: Settings },
+    { to: '/admin/operations', label: 'Operations & disputes', icon: Activity },
   ];
 
-  const initials = officer.name.split(' ').map((p) => p[0]).slice(0, 2).join('');
+  const displayName = account?.name || officer.name;
+  const initials = displayName.split(' ').map((p) => p[0]).slice(0, 2).join('');
 
   return (
     <div className="app">
@@ -48,11 +52,11 @@ export default function Layout() {
         <div className="officer">
           <div className="avatar">{initials}</div>
           <div style={{ minWidth: 0 }}>
-            <div className="officer-name">{officer.name}</div>
-            <div className="officer-role">{officer.designation}</div>
+            <div className="officer-name">{displayName}</div>
+            <div className="officer-role">{account?.designation || officer.designation}</div>
           </div>
           <button className="icon-btn-light" title="Log out" aria-label="Log out"
-            onClick={() => { toast('Logged out (demo — no authentication connected)'); navigate('/'); }}>
+            onClick={() => { addAudit(displayName, 'Signed out', account?.id || 'session'); signOut(); toast('Signed out successfully.'); navigate('/'); }}>
             <LogOut size={17} />
           </button>
         </div>

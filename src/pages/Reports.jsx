@@ -5,7 +5,6 @@ import { useApp } from '../context/AppContext';
 import { useToast } from '../components/common/Toast';
 import { PageHeader, Card, StatCard } from '../components/common/ui';
 import { formatCurrency } from '../utils/format';
-import { monthlyRevenue } from '../data/mockData';
 
 function toCsv(rows) {
   const head = ['Challan ID', 'Vehicle', 'Owner', 'Violations', 'Fine', 'Officer', 'Generated', 'Payment', 'Status'];
@@ -14,7 +13,7 @@ function toCsv(rows) {
 }
 
 export default function Reports() {
-  const { challans, history } = useApp();
+  const { challans, history, payments } = useApp();
   const toast = useToast();
 
   const stats = useMemo(() => {
@@ -24,11 +23,21 @@ export default function Reports() {
     const decided = history.filter((h) => ['Approved', 'Rejected'].includes(h.action)).length;
     return {
       total: valid.reduce((s, c) => s + c.fineAmount, 0),
-      collected: paid.reduce((s, c) => s + c.fineAmount, 0),
+      collected: payments.filter((p) => p.status === 'Success').reduce((s, p) => s + p.amount, 0),
       rate: valid.length ? Math.round((paid.length / valid.length) * 100) : 0,
       approval: decided ? Math.round((approved / decided) * 100) : 0,
     };
-  }, [challans, history]);
+  }, [challans, history, payments]);
+
+  const monthlyRevenue = useMemo(() => Array.from({ length: 6 }, (_, index) => {
+    const date = new Date(); date.setMonth(date.getMonth() - (5 - index));
+    const month = date.toISOString().slice(0, 7);
+    return {
+      month: date.toLocaleDateString('en-IN', { month: 'short' }),
+      fines: challans.filter(c => c.generatedAt.slice(0, 7) === month && c.status !== 'Cancelled').reduce((sum,c)=>sum+c.fineAmount,0),
+      collected: payments.filter(p => p.at.slice(0, 7) === month && p.status === 'Success').reduce((sum,p)=>sum+p.amount,0),
+    };
+  }), [challans, payments]);
 
   const officers = useMemo(() => {
     const map = {};
